@@ -22,16 +22,64 @@
  * SOFTWARE.
  */
 
+#include <libopencmsis/core_cm3.h>
+#include <libopencm3/cm3/systick.h>
+#include <libopencm3/stm32/flash.h>
+#include <libopencm3/stm32/pwr.h>
+#include <libopencm3/stm32/rcc.h>
 #include "board.h"
 
-int main()
+static volatile uint32_t ticks;
+
+static void clock_init(void)
 {
-    board_init();
+    rcc_osc_on(RCC_HSI);
+    rcc_wait_for_osc_ready(RCC_HSI);
+    rcc_set_sysclk_source(RCC_HSI);
 
-    for (;;) {
-        board_delay_ms(1000);
-        board_sleep();
+    rcc_set_hpre(RCC_CFGR_HPRE_NODIV);
+    rcc_set_ppre(RCC_CFGR_PPRE_NODIV);
+
+    flash_set_ws(FLASH_ACR_LATENCY_000_024MHZ);
+
+    rcc_apb1_frequency = 8000000;
+    rcc_ahb_frequency = 8000000;
+
+    systick_set_reload(rcc_ahb_frequency / 1000UL);
+    systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+    systick_counter_enable();
+    systick_interrupt_enable();
+
+    rcc_periph_clock_enable(RCC_PWR);
+}
+
+static void enter_standby_mode(void)
+{
+    pwr_clear_wakeup_flag();
+    pwr_set_standby_mode();
+    SCB_SCR |= SCB_SCR_SLEEPDEEP;
+    __WFI();
+}
+
+void board_init()
+{
+    clock_init();
+}
+
+void board_sleep()
+{
+    enter_standby_mode();
+}
+
+void board_delay_ms(uint32_t ms)
+{
+    volatile uint32_t last = ticks;
+
+    while (ticks - last < ms) {
     }
+}
 
-    return 0;
+void sys_tick_handler(void)
+{
+    ticks++;
 }

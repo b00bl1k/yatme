@@ -22,16 +22,13 @@
  * SOFTWARE.
  */
 
-#include "board.h"
+#ifndef __BOARD_H__
+#define __BOARD_H__
 
-int main()
-{
-    board_init();
+#include <stdint.h>
 
-    for (;;) {
-        board_delay_ms(1000);
-        board_sleep();
-    }
+void board_init(void);
+void board_sleep(void);
+void board_delay_ms(uint32_t);
 
-    return 0;
-}
+#endif /* ~__BOARD_H__ */
