@@ -51,6 +51,8 @@ static void clock_init(void)
     systick_interrupt_enable();
 
     rcc_periph_clock_enable(RCC_PWR);
+    rcc_periph_clock_enable(RCC_GPIOA);
+    rcc_periph_clock_enable(RCC_GPIOB);
 }
 
 static void enter_standby_mode(void)

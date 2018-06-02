@@ -6,7 +6,8 @@ set(PROJECT_NAME yatme)
 
 set(SOURCES
     src/board.c
-    src/main.c)
+    src/main.c
+    src/radio.c)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # library libopencm3 (stm32f0 only)

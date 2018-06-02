@@ -22,18 +22,9 @@
  * SOFTWARE.
  */
 
-#include "board.h"
-#include "radio.h"
+#ifndef __RADIO_H__
+#define __RADIO_H__
 
-int main()
-{
-    board_init();
-    radio_init();
+void radio_init(void);
 
-    for (;;) {
-        board_delay_ms(1000);
-        board_sleep();
-    }
-
-    return 0;
-}
+#endif /* ~__RADIO_H__ */
