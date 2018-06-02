@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/yatme",
+            "name": "Download & Debug",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "device": "stm32f030f4",
+            "configFiles": [
+                "openocd.cfg"
+            ]
+        },
+        {
+            "cwd": "${workspaceRoot}",
+            "executable": "./build/yatme",
+            "name": "Debug",
+            "request": "attach",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "device": "stm32f030f4",
+            "configFiles": [
+                "openocd.cfg"
+            ]
+        }
+    ]
+}
