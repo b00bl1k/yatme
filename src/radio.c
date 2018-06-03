@@ -40,6 +40,8 @@
 #define RADIO_PWR_PORT GPIOB
 #define RADIO_PWR_PIN GPIO1
 
+struct nrf24_device radio;
+
 /* Assert chip select to low */
 static void radio_cs_sel(bool sel)
 {
@@ -63,6 +65,12 @@ static void radio_pwr_en(bool en)
         gpio_set(RADIO_PWR_PORT, RADIO_PWR_PIN);
     else
         gpio_clear(RADIO_PWR_PORT, RADIO_PWR_PIN);
+}
+
+static uint8_t radio_spi_xfer(uint8_t data)
+{
+    spi_send8(SPI1, data);
+    return spi_read8(SPI1);
 }
 
 void radio_init()
@@ -100,4 +108,17 @@ void radio_init()
     radio_pwr_en(false);
 
     spi_enable(SPI1);
+
+    radio.pin_cs = radio_cs_sel;
+    radio.pin_ce = radio_ce_en;
+    radio.spi_xfer = radio_spi_xfer;
+}
+
+void radio_enable(bool en)
+{
+    radio_pwr_en(en);
+
+    if (en) {
+        board_delay_ms(100);
+    }
 }

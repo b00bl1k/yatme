@@ -25,6 +25,9 @@
 #ifndef __RADIO_H__
 #define __RADIO_H__
 
+#include <stdbool.h>
+
 void radio_init(void);
+void radio_enable(bool);
 
 #endif /* ~__RADIO_H__ */

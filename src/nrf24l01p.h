@@ -25,6 +25,9 @@
 #ifndef __NRF24L01P_H__
 #define __NRF24L01P_H__
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /* Commands */
 #define NRF24_CMD_R_REGISTER 0x00
 #define NRF24_CMD_W_REGISTER 0x20
@@ -204,5 +207,20 @@
 #define NRF24_FEATURE_EN_DYN_ACK (1 << 0)
 #define NRF24_FEATURE_EN_ACK_PAY (1 << 1)
 #define NRF24_FEATURE_EN_DPL (1 << 2)
+
+typedef void (* nrf24_pin_t)(bool);
+typedef uint8_t (* nrf24_spi_xfer_t)(uint8_t);
+typedef void (* nrf24_delay_us_t)(uint32_t);
+
+struct nrf24_device {
+    nrf24_pin_t pin_cs;
+    nrf24_pin_t pin_ce;
+    nrf24_spi_xfer_t spi_xfer;
+    nrf24_delay_us_t delay_us;
+};
+
+uint8_t nrf24_cmd(struct nrf24_device * dev, uint8_t cmd);
+uint8_t nrf24_read_reg(struct nrf24_device * dev, uint8_t reg);
+uint8_t nrf24_write_reg(struct nrf24_device * dev, uint8_t reg, uint8_t val);
 
 #endif /* ~__NRF24L01P_H__ */
