@@ -77,7 +77,7 @@ void board_delay_ms(uint32_t ms)
 {
     volatile uint32_t last = ticks;
 
-    while (ticks - last < ms) {
+    while ((ticks - last) < ms) {
     }
 }
 

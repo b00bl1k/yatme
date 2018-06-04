@@ -208,19 +208,105 @@
 #define NRF24_FEATURE_EN_ACK_PAY (1 << 1)
 #define NRF24_FEATURE_EN_DPL (1 << 2)
 
+#define NRF24_RX_PIPES_MAX 6
+#define NRF24_ADDR_SIZE_MAX 5
+
 typedef void (* nrf24_pin_t)(bool);
 typedef uint8_t (* nrf24_spi_xfer_t)(uint8_t);
 typedef void (* nrf24_delay_us_t)(uint32_t);
+
+enum nrf24_crc {
+    NRF24_CRC_DISABLE,
+    NRF24_CRC_8,
+    NRF24_CRC_16
+};
+
+enum nrf24_aw {
+    NRF24_AW_3 = NRF24_SETUP_AW_AW_3,
+    NRF24_AW_4 = NRF24_SETUP_AW_AW_4,
+    NRF24_AW_5 = NRF24_SETUP_AW_AW_5
+};
+
+enum nrf24_power {
+    NRF24_PWR_0 = NRF24_RF_SETUP_RF_PWR_0DBM,
+    NRF24_PWR_M6 = NRF24_RF_SETUP_RF_PWR_M6DBM,
+    NRF24_PWR_M12 = NRF24_RF_SETUP_RF_PWR_M12DBM,
+    NRF24_PWR_M18 = NRF24_RF_SETUP_RF_PWR_M18DBM
+};
+
+enum nrf24_datarate {
+    NRF24_DR_250_KBPS = NRF24_RF_SETUP_RF_DR_LOW,
+    NRF24_DR_1_MBPS = 0,
+    NRF24_DR_2_MBPS = NRF24_RF_SETUP_RF_DR_HIGH
+};
+
+enum nrf24_ard {
+    NRF24_ARD_250US = NRF24_SETUP_RETR_ARD_250US,
+    NRF24_ARD_500US = NRF24_SETUP_RETR_ARD_500US,
+    NRF24_ARD_750US = NRF24_SETUP_RETR_ARD_750US,
+    NRF24_ARD_1000US = NRF24_SETUP_RETR_ARD_1000US,
+    NRF24_ARD_1250US = NRF24_SETUP_RETR_ARD_1250US,
+    NRF24_ARD_1500US = NRF24_SETUP_RETR_ARD_1500US,
+    NRF24_ARD_1750US = NRF24_SETUP_RETR_ARD_1750US,
+    NRF24_ARD_2000US = NRF24_SETUP_RETR_ARD_2000US,
+    NRF24_ARD_2250US = NRF24_SETUP_RETR_ARD_2250US,
+    NRF24_ARD_2500US = NRF24_SETUP_RETR_ARD_2500US,
+    NRF24_ARD_2750US = NRF24_SETUP_RETR_ARD_2750US,
+    NRF24_ARD_3000US = NRF24_SETUP_RETR_ARD_3000US,
+    NRF24_ARD_3250US = NRF24_SETUP_RETR_ARD_3250US,
+    NRF24_ARD_3500US = NRF24_SETUP_RETR_ARD_3500US,
+    NRF24_ARD_3750US = NRF24_SETUP_RETR_ARD_3750US,
+    NRF24_ARD_4000US = NRF24_SETUP_RETR_ARD_4000US
+};
 
 struct nrf24_device {
     nrf24_pin_t pin_cs;
     nrf24_pin_t pin_ce;
     nrf24_spi_xfer_t spi_xfer;
     nrf24_delay_us_t delay_us;
+
+    uint8_t reg_dynpd;
+    uint8_t reg_en_aa;
+    uint8_t reg_en_rxaddr;
 };
 
-uint8_t nrf24_cmd(struct nrf24_device * dev, uint8_t cmd);
-uint8_t nrf24_read_reg(struct nrf24_device * dev, uint8_t reg);
-uint8_t nrf24_write_reg(struct nrf24_device * dev, uint8_t reg, uint8_t val);
+struct nrf24_init_def {
+    enum nrf24_crc crc;
+    enum nrf24_power rf_pwr;
+    enum nrf24_datarate rf_dr;
+    uint8_t rf_ch; /*!< RF channel: 0 .. 127 */
+    enum nrf24_ard ard;
+    uint8_t arc; /*!< Auto Retransmit Count: 0 .. 15 */
+    bool dpl;
+    bool ack_pay;
+    bool dyn_ack;
+};
+
+struct nrf24_rx_pipe {
+    bool enabled;
+    bool dpl; /* Dynamic payload width */
+    bool aack; /* Auto ack */
+    union {
+        uint8_t rx01[NRF24_ADDR_SIZE_MAX];
+        uint8_t rx2345;
+    } addr;
+    uint8_t pw; /* Payload width */
+};
+
+struct nrf24_pipes_def {
+    enum nrf24_aw aw;
+    uint8_t tx_addr[NRF24_ADDR_SIZE_MAX];
+    struct nrf24_rx_pipe rx_pipes[NRF24_RX_PIPES_MAX];
+};
+
+uint8_t nrf24_cmd(struct nrf24_device *, uint8_t);
+uint8_t nrf24_read_reg(struct nrf24_device *, uint8_t);
+uint8_t nrf24_write_reg(struct nrf24_device *, uint8_t, uint8_t);
+uint8_t nrf24_read_array(struct nrf24_device *, uint8_t, void *, int);
+uint8_t nrf24_write_array(struct nrf24_device *, uint8_t, const void *, int);
+uint8_t nrf24_read_reg_array(struct nrf24_device *, uint8_t, void * dst, int);
+uint8_t nrf24_write_reg_array(struct nrf24_device *, uint8_t, const void *, int);
+bool nrf24_init(struct nrf24_device *, const struct nrf24_init_def *);
+void nrf24_setup_pipes(struct nrf24_device *, const struct nrf24_pipes_def *);
 
 #endif /* ~__NRF24L01P_H__ */

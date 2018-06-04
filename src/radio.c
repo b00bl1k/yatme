@@ -26,6 +26,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/spi.h>
 
+#include "board.h"
 #include "nrf24l01p.h"
 #include "radio.h"
 
@@ -40,7 +41,58 @@
 #define RADIO_PWR_PORT GPIOB
 #define RADIO_PWR_PIN GPIO1
 
-struct nrf24_device radio;
+static struct nrf24_device radio;
+
+static void radio_gpio_init(void);
+static void radio_spi_init(void);
+static void radio_cs_sel(bool);
+static void radio_ce_en(bool);
+static void radio_pwr_en(bool);
+static uint8_t radio_spi_xfer(uint8_t);
+
+static void radio_gpio_init(void)
+{
+    gpio_mode_setup(RADIO_SPI_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE,
+        RADIO_SPI_SCK_PIN | RADIO_SPI_MOSI_PIN | RADIO_SPI_MISO_PIN);
+
+    gpio_mode_setup(RADIO_CS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RADIO_CS_PIN);
+    gpio_set_output_options(RADIO_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, RADIO_CS_PIN);
+
+    gpio_mode_setup(RADIO_CE_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RADIO_CE_PIN);
+    gpio_set_output_options(RADIO_CE_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, RADIO_CE_PIN);
+
+    gpio_mode_setup(RADIO_PWR_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RADIO_PWR_PIN);
+    gpio_set_output_options(RADIO_PWR_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, RADIO_PWR_PIN);
+
+    radio_cs_sel(false);
+    radio_ce_en(false);
+    radio_pwr_en(false);
+
+    radio.pin_cs = radio_cs_sel;
+    radio.pin_ce = radio_ce_en;
+    radio.spi_xfer = radio_spi_xfer;
+}
+
+static void radio_spi_init(void)
+{
+    rcc_periph_clock_enable(RCC_SPI1);
+
+    spi_set_master_mode(SPI1);
+    spi_set_baudrate_prescaler(SPI1, SPI_CR1_BR_FPCLK_DIV_8);
+    spi_set_clock_polarity_0(SPI1);
+    spi_set_clock_phase_0(SPI1);
+    spi_set_full_duplex_mode(SPI1);
+    spi_set_unidirectional_mode(SPI1);
+    spi_set_data_size(SPI1, SPI_CR2_DS_8BIT);
+    spi_fifo_reception_threshold_8bit(SPI1);
+    spi_enable_software_slave_management(SPI1);
+    spi_send_msb_first(SPI1);
+
+    spi_set_nss_high(SPI1);
+    spi_enable_ss_output(SPI1);
+
+    spi_enable(SPI1);
+}
 
 /* Assert chip select to low */
 static void radio_cs_sel(bool sel)
@@ -75,50 +127,62 @@ static uint8_t radio_spi_xfer(uint8_t data)
 
 void radio_init()
 {
-    rcc_periph_clock_enable(RCC_SPI1);
+    const struct nrf24_init_def init = {
+        .crc = NRF24_CRC_16,
+        .rf_pwr = NRF24_PWR_0,
+        .rf_dr = NRF24_DR_2_MBPS,
+        .rf_ch = 0,
+        .ard = NRF24_ARD_1000US,
+        .arc = 5,
+        .dpl = true,
+        .ack_pay = true,
+        .dyn_ack = true
+    };
 
-    gpio_mode_setup(RADIO_SPI_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE,
-        RADIO_SPI_SCK_PIN | RADIO_SPI_MOSI_PIN | RADIO_SPI_MISO_PIN);
+    const struct nrf24_pipes_def pipes = {
+        .aw = NRF24_AW_3,
+        .tx_addr = {0xE7, 0xE7, 0xE7},
+        .rx_pipes = {
+            {
+                .enabled = true,
+                .dpl = true,
+                .aack = true,
+                .addr.rx01 = {0xE7, 0xE7, 0xE7},
+                .pw = 32
+            },
+            {
+                .enabled = true,
+                .dpl = true,
+                .aack = true,
+                .addr.rx01 = {0xC2, 0xC2, 0xC2},
+                .pw = 32
+            },
+            {
+                .enabled = true,
+                .dpl = true,
+                .aack = true,
+                .addr.rx2345 = 0xC3,
+                .pw = 32
+            },
+            {
+                .enabled = false
+            },
+            {
+                .enabled = false
+            },
+            {
+                .enabled = false
+            }
+        }
+    };
 
-    gpio_mode_setup(RADIO_CS_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RADIO_CS_PIN);
-    gpio_set_output_options(RADIO_CS_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, RADIO_CS_PIN);
+    radio_gpio_init();
+    radio_spi_init();
 
-    gpio_mode_setup(RADIO_CE_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RADIO_CE_PIN);
-    gpio_set_output_options(RADIO_CE_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, RADIO_CE_PIN);
+    /* Power on */
+    radio_pwr_en(true);
+    board_delay_ms(100);
 
-    gpio_mode_setup(RADIO_PWR_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, RADIO_PWR_PIN);
-    gpio_set_output_options(RADIO_PWR_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, RADIO_PWR_PIN);
-
-    spi_set_master_mode(SPI1);
-    spi_set_baudrate_prescaler(SPI1, SPI_CR1_BR_FPCLK_DIV_8);
-    spi_set_clock_polarity_0(SPI1);
-    spi_set_clock_phase_0(SPI1);
-    spi_set_full_duplex_mode(SPI1);
-    spi_set_unidirectional_mode(SPI1);
-    spi_set_data_size(SPI1, SPI_CR2_DS_8BIT);
-    spi_fifo_reception_threshold_8bit(SPI1);
-    spi_enable_software_slave_management(SPI1);
-    spi_send_msb_first(SPI1);
-
-    spi_set_nss_high(SPI1);
-    spi_enable_ss_output(SPI1);
-
-    radio_cs_sel(false);
-    radio_ce_en(false);
-    radio_pwr_en(false);
-
-    spi_enable(SPI1);
-
-    radio.pin_cs = radio_cs_sel;
-    radio.pin_ce = radio_ce_en;
-    radio.spi_xfer = radio_spi_xfer;
-}
-
-void radio_enable(bool en)
-{
-    radio_pwr_en(en);
-
-    if (en) {
-        board_delay_ms(100);
-    }
+    nrf24_init(&radio, &init);
+    nrf24_setup_pipes(&radio, &pipes);
 }
