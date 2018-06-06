@@ -29,6 +29,6 @@
 
 void board_init(void);
 void board_sleep(void);
-void board_delay_ms(uint32_t);
+void board_delay_us(uint32_t);
 
 #endif /* ~__BOARD_H__ */

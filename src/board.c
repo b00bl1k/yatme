@@ -29,8 +29,6 @@
 #include <libopencm3/stm32/rcc.h>
 #include "board.h"
 
-static volatile uint32_t ticks;
-
 static void clock_init(void)
 {
     rcc_osc_on(RCC_HSI);
@@ -44,11 +42,6 @@ static void clock_init(void)
 
     rcc_apb1_frequency = 8000000;
     rcc_ahb_frequency = 8000000;
-
-    systick_set_reload(rcc_ahb_frequency / 1000UL);
-    systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
-    systick_counter_enable();
-    systick_interrupt_enable();
 
     rcc_periph_clock_enable(RCC_PWR);
     rcc_periph_clock_enable(RCC_GPIOA);
@@ -73,15 +66,15 @@ void board_sleep()
     enter_standby_mode();
 }
 
-void board_delay_ms(uint32_t ms)
+void board_delay_us(uint32_t us)
 {
-    volatile uint32_t last = ticks;
+    systick_set_reload(rcc_ahb_frequency / 100000 * us);
+    systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+    systick_counter_enable();
 
-    while ((ticks - last) < ms) {
+    while (systick_get_countflag() == false) {
     }
-}
 
-void sys_tick_handler(void)
-{
-    ticks++;
+    systick_clear();
+    systick_counter_disable();
 }
