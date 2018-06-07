@@ -234,3 +234,78 @@ void nrf24_setup_pipes(struct nrf24_device * dev,
     nrf24_write_reg(dev, NRF24_EN_AA, dev->reg_en_aa);
     nrf24_write_reg(dev, NRF24_EN_RXADDR, dev->reg_en_rxaddr);
 }
+
+/**
+ * @brief Enter to powerdown mode
+ */
+void nrf24_powerdown(struct nrf24_device * dev)
+{
+    uint8_t conf_reg;
+
+    conf_reg = nrf24_read_reg(dev, NRF24_CONFIG);
+    conf_reg &= ~(NRF24_CONFIG_PWR_UP | NRF24_CONFIG_PRIM_RX);
+
+    nrf24_write_reg(dev, NRF24_CONFIG, conf_reg);
+    dev->pin_ce(false);
+}
+
+/**
+ * @brief Enter to standby-I mode
+ */
+void nrf24_standby(struct nrf24_device * dev)
+{
+    uint8_t conf_reg;
+    bool pd_mode;
+
+    conf_reg = nrf24_read_reg(dev, NRF24_CONFIG);
+    pd_mode = (conf_reg & NRF24_CONFIG_PWR_UP) == 0x0;
+
+    conf_reg |= NRF24_CONFIG_PWR_UP;
+    conf_reg &= ~NRF24_CONFIG_PRIM_RX;
+
+    nrf24_write_reg(dev, NRF24_CONFIG, conf_reg);
+    dev->pin_ce(false);
+
+    if (pd_mode) {
+        /* Wait for oscillator start up */
+        dev->delay_us(1500);
+    }
+}
+
+void nrf24_rxmode(struct nrf24_device * dev)
+{
+    uint8_t conf_reg;
+
+    conf_reg = nrf24_read_reg(dev, NRF24_CONFIG);
+    conf_reg |= NRF24_CONFIG_PRIM_RX;
+
+    nrf24_write_reg(dev, NRF24_CONFIG, conf_reg);
+
+    dev->pin_ce(true);
+    dev->delay_us(150);
+}
+
+void nrf24_tx(struct nrf24_device * dev, const void * data, int size)
+{
+    uint8_t reg8;
+
+    /* Check available space in TX FIFO */
+    if (nrf24_read_reg(dev, NRF24_STATUS) & NRF24_STATUS_TX_FULL)
+        nrf24_cmd(dev, NRF24_CMD_FLUSH_TX);
+
+    dev->pin_ce(false);
+
+    /* Clear PRIM RX flag */
+    reg8 = nrf24_read_reg(dev, NRF24_CONFIG);
+    nrf24_write_reg(dev, NRF24_CONFIG, reg8 & ~NRF24_CONFIG_PRIM_RX);
+
+    /* Write payload into the TX FIFO */
+    nrf24_write_array(dev, NRF24_CMD_W_TX_PAYLOAD, data, size);
+
+    /* A high pulse on CE starts the transmission.
+     * The minimum pulse width on CE is 10us .
+     */
+    dev->pin_ce(true);
+    dev->delay_us(15);
+    dev->pin_ce(false);
+}

@@ -309,4 +309,10 @@ uint8_t nrf24_write_reg_array(struct nrf24_device *, uint8_t, const void *, int)
 bool nrf24_init(struct nrf24_device *, const struct nrf24_init_def *);
 void nrf24_setup_pipes(struct nrf24_device *, const struct nrf24_pipes_def *);
 
+void nrf24_powerdown(struct nrf24_device *);
+void nrf24_standby(struct nrf24_device *);
+void nrf24_rxmode(struct nrf24_device *);
+
+void nrf24_tx(struct nrf24_device *, const void *, int);
+
 #endif /* ~__NRF24L01P_H__ */
