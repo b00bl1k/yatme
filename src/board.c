@@ -46,6 +46,10 @@ static void clock_init(void)
     rcc_periph_clock_enable(RCC_PWR);
     rcc_periph_clock_enable(RCC_GPIOA);
     rcc_periph_clock_enable(RCC_GPIOB);
+
+    systick_set_reload(STK_RVR_RELOAD);
+    systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+    systick_counter_enable();
 }
 
 static void enter_standby_mode(void)
@@ -68,13 +72,9 @@ void board_sleep()
 
 void board_delay_us(uint32_t us)
 {
-    systick_set_reload(rcc_ahb_frequency / 100000 * us);
-    systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
-    systick_counter_enable();
-
-    while (systick_get_countflag() == false) {
-    }
+    uint32_t goal = STK_RVR_RELOAD - (us * 8);
 
     systick_clear();
-    systick_counter_disable();
+    while (systick_get_value() > goal) {
+    }
 }
