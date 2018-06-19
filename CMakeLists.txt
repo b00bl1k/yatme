@@ -8,6 +8,7 @@ set(SOURCES
     src/board.c
     src/main.c
     src/nrf24l01p.c
+    src/owbus.c
     src/radio.c)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
