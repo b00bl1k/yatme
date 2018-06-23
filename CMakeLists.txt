@@ -6,6 +6,7 @@ set(PROJECT_NAME yatme)
 
 set(SOURCES
     src/board.c
+    src/ds18b20.c
     src/main.c
     src/nrf24l01p.c
     src/owbus.c
