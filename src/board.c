@@ -28,6 +28,7 @@
 #include <libopencm3/stm32/pwr.h>
 #include <libopencm3/stm32/rcc.h>
 #include "board.h"
+#include "owbus.h"
 
 static void clock_init(void)
 {
@@ -63,6 +64,7 @@ static void enter_standby_mode(void)
 void board_init()
 {
     clock_init();
+    owbus_init();
 }
 
 void board_sleep()

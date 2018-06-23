@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <stddef.h>
 #include "owbus.h"
 #include "ds18b20.h"
 
@@ -56,7 +57,7 @@ int ds18b20_convert_t(const void * rom)
     return 0;
 }
 
-int ds18b20_read_t(const void * rom, void * data)
+int ds18b20_read_t(const void * rom, uint16_t * data)
 {
     int i;
     uint8_t scratchpad[9];
@@ -71,8 +72,9 @@ int ds18b20_read_t(const void * rom, void * data)
         crc = crc_8bit_dallas_init(crc, &scratchpad[i], 1);
     }
 
-    ((uint8_t *)data)[0] = scratchpad[0];
-    ((uint8_t *)data)[1] = scratchpad[1];
+    if (data != NULL) {
+        *data = scratchpad[0] | (scratchpad[1] << 8);
+    }
 
     if (crc != 0)
         return 2;

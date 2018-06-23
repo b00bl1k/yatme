@@ -25,9 +25,11 @@
 #ifndef __DS18B20_H__
 #define __DS18B20_H__
 
+#include <stdint.h>
+
 #define DS18B20_NORMALIZE(n) ((((short int)n) * 10) / 16)
 
 int ds18b20_convert_t(const void *);
-int ds18b20_read_t(const void *, void *);
+int ds18b20_read_t(const void *, uint16_t *);
 
 #endif /* ~__DS18B20_H__ */
