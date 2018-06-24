@@ -27,8 +27,16 @@
 #include <libopencm3/stm32/flash.h>
 #include <libopencm3/stm32/pwr.h>
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/rtc.h>
 #include "board.h"
 #include "owbus.h"
+
+/* RTC alarm X sub second register */
+#define RTC_ALRMXSRR_MASKSS_SHIFT (24)
+#define RTC_ALRMXSSR_MASKSS_MASK (0xf)
+#define RTC_ALRMXSSR_MASKSS_NO (0)
+#define RTC_ALRMXSSR_MASKSS_ALL (0xf)
+#define RTC_ALRMXSSR_SS_MASK (0x7fff)
 
 static void clock_init(void)
 {
@@ -53,6 +61,81 @@ static void clock_init(void)
     systick_counter_enable();
 }
 
+static uint8_t rtc_add_minutes(uint8_t shift)
+{
+    uint32_t time = RTC_TR;
+    uint8_t min = (time >> 8) & 0xff;
+
+    /* From BCD */
+    min = (min & 0xf) + ((min >> 4) * 10);
+
+    min = (min + shift) % 60;
+
+    /* To BCD */
+    min = (min % 10) | ((min / 10) << 4);
+
+    return min;
+}
+
+static void rtc_set_alarma(uint32_t mask, uint8_t date, uint8_t hours,
+    uint8_t minutes, uint8_t seconds, uint8_t ss_mask, uint16_t ss_value)
+{
+    rtc_unlock();
+    RTC_CR &= ~RTC_CR_ALRAE;
+
+    while(!(RTC_ISR & RTC_ISR_ALRAWF)) {
+    }
+
+    RTC_ALRMAR = mask | (date << RTC_ALRMXR_DU_SHIFT) |
+        (hours << RTC_ALRMXR_HU_SHIFT) | (minutes << RTC_ALRMXR_MNU_SHIFT) |
+        (seconds << RTC_ALRMXR_SU_SHIFT);
+    RTC_ALRMASSR = (ss_mask << RTC_ALRMXSRR_MASKSS_SHIFT) | ss_value;
+
+    RTC_CR |= RTC_CR_ALRAE;
+    rtc_lock();
+}
+
+static void rtc_init(void)
+{
+   pwr_disable_backup_domain_write_protect();
+
+    if (pwr_get_standby_flag()) {
+        pwr_clear_standby_flag();
+    }
+    else {
+        RCC_BDCR &= ~RCC_BDCR_RTCEN;
+
+        rcc_periph_reset_pulse(RST_BACKUPDOMAIN);
+        rcc_osc_on(RCC_LSI);
+        rcc_wait_for_osc_ready(RCC_LSI);
+        RCC_BDCR = (RCC_BDCR & ~RCC_BDCR_RTCSEL) |
+                        RCC_BDCR_RTCSEL_LSI;
+
+        rcc_enable_rtc_clock();
+        rtc_unlock();
+
+        RTC_ISR |= RTC_ISR_INIT;
+        while ((RTC_ISR & RTC_ISR_INITF) == 0) {
+        }
+
+        rtc_set_prescaler(311, 127);
+
+        RTC_ISR &= ~(RTC_ISR_INIT);
+        rtc_lock();
+
+        RCC_BDCR |= RCC_BDCR_RTCEN;
+    }
+
+    rtc_set_alarma(RTC_ALRMXR_MSK4 | RTC_ALRMXR_MSK3,
+        0x00, 0x00, rtc_add_minutes(2), 0x00, 0, 0);
+
+    rtc_unlock();
+    RTC_CR |= RTC_CR_ALRAIE;
+    rtc_lock();
+
+    nvic_enable_irq(NVIC_RTC_IRQ);
+}
+
 static void enter_standby_mode(void)
 {
     pwr_clear_wakeup_flag();
@@ -65,6 +148,7 @@ void board_init()
 {
     clock_init();
     owbus_init();
+    rtc_init();
 }
 
 void board_sleep()
