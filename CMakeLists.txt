@@ -10,7 +10,8 @@ set(SOURCES
     src/main.c
     src/nrf24l01p.c
     src/owbus.c
-    src/radio.c)
+    src/radio.c
+    libs/cayenne-lpp/cayenne_lpp.c)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # library libopencm3 (stm32f0 only)
@@ -42,6 +43,7 @@ add_custom_target(
 add_definitions(-DSTM32F0)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/cayenne-lpp)
 
 set(CMAKE_EXE_LINKER_FLAGS "-Tstm32f030x4.ld ${CPU} -nostartfiles -Wl,--gc-sections")
 
