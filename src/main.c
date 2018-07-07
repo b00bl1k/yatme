@@ -22,17 +22,42 @@
  * SOFTWARE.
  */
 
+#include <stddef.h>
+#include <cayenne_lpp.h>
 #include "board.h"
+#include "owbus.h"
+#include "ds18b20.h"
 #include "radio.h"
+
+cayenne_lpp_t msg;
 
 int main()
 {
+    int status;
+    uint16_t value;
+
     board_init();
     radio_init();
+    owbus_init();
+
+    status = ds18b20_convert_t(NULL);
+
+    value = board_vbat_read();
+    cayenne_lpp_add_analog_input(&msg, 1, (float)value / 100.0);
+
+    if (status == 0) {
+        board_delay_us(800000);
+        status = ds18b20_read_t(NULL, &value);
+        if (status == 0) {
+            cayenne_lpp_add_temperature(&msg, 2,
+                (float)DS18B20_NORMALIZE(value) / 10.0);
+        }
+    }
+
+    radio_tx(msg.buffer, msg.cursor);
+    board_sleep();
 
     for (;;) {
-        board_delay_ms(1000);
-        board_sleep();
     }
 
     return 0;

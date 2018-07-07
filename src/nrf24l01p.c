@@ -289,9 +289,8 @@ void nrf24_tx(struct nrf24_device * dev, const void * data, int size)
 {
     uint8_t reg8;
 
-    /* Check available space in TX FIFO */
-    if (nrf24_read_reg(dev, NRF24_STATUS) & NRF24_STATUS_TX_FULL)
-        nrf24_cmd(dev, NRF24_CMD_FLUSH_TX);
+    /* Flush TX FIFO */
+    nrf24_cmd(dev, NRF24_CMD_FLUSH_TX);
 
     dev->pin_ce(false);
 

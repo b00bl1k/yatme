@@ -71,6 +71,7 @@ static void radio_gpio_init(void)
     radio.pin_cs = radio_cs_sel;
     radio.pin_ce = radio_ce_en;
     radio.spi_xfer = radio_spi_xfer;
+    radio.delay_us = board_delay_us;
 }
 
 static void radio_spi_init(void)
@@ -130,39 +131,31 @@ void radio_init()
     const struct nrf24_init_def init = {
         .crc = NRF24_CRC_16,
         .rf_pwr = NRF24_PWR_0,
-        .rf_dr = NRF24_DR_2_MBPS,
-        .rf_ch = 0,
-        .ard = NRF24_ARD_1000US,
-        .arc = 5,
+        .rf_dr = NRF24_DR_250_KBPS,
+        .rf_ch = 3,
+        .ard = NRF24_ARD_3000US,
+        .arc = 4,
         .dpl = true,
-        .ack_pay = true,
-        .dyn_ack = true
+        .ack_pay = false,
+        .dyn_ack = false
     };
 
     const struct nrf24_pipes_def pipes = {
         .aw = NRF24_AW_3,
-        .tx_addr = {0xE7, 0xE7, 0xE7},
+        .tx_addr = {0xF1, 0xB6, 0xB5},
         .rx_pipes = {
             {
                 .enabled = true,
                 .dpl = true,
-                .aack = true,
-                .addr.rx01 = {0xE7, 0xE7, 0xE7},
+                .aack = false,
+                .addr.rx01 = {0xF1, 0xB6, 0xB5},
                 .pw = 32
             },
             {
-                .enabled = true,
-                .dpl = true,
-                .aack = true,
-                .addr.rx01 = {0xC2, 0xC2, 0xC2},
-                .pw = 32
+                .enabled = false
             },
             {
-                .enabled = true,
-                .dpl = true,
-                .aack = true,
-                .addr.rx2345 = 0xC3,
-                .pw = 32
+                .enabled = false,
             },
             {
                 .enabled = false
@@ -181,8 +174,23 @@ void radio_init()
 
     /* Power on */
     radio_pwr_en(true);
-    board_delay_ms(100);
+    board_delay_us(100000);
 
     nrf24_init(&radio, &init);
     nrf24_setup_pipes(&radio, &pipes);
+}
+
+void radio_tx(const uint8_t * payload, int size)
+{
+    uint8_t status;
+
+    nrf24_standby(&radio);
+    nrf24_tx(&radio, payload, size);
+
+    do {
+        status = nrf24_read_reg(&radio, NRF24_STATUS);
+    } while ((status & (NRF24_STATUS_MAX_RT | NRF24_STATUS_TX_DS)) == 0);
+
+    /* Clear status bits */
+    nrf24_write_reg(&radio, NRF24_STATUS, status);
 }

@@ -29,5 +29,6 @@
 
 void radio_init(void);
 void radio_enable(bool);
+void radio_tx(const uint8_t *, int);
 
 #endif /* ~__RADIO_H__ */
