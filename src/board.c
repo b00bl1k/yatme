@@ -24,6 +24,7 @@
 
 #include <libopencmsis/core_cm3.h>
 #include <libopencm3/cm3/systick.h>
+#include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/flash.h>
 #include <libopencm3/stm32/pwr.h>
 #include <libopencm3/stm32/rcc.h>
@@ -163,4 +164,41 @@ void board_delay_us(uint32_t us)
     systick_clear();
     while (systick_get_value() > goal) {
     }
+}
+
+uint16_t board_vbat_read()
+{
+    uint16_t temp;
+    uint8_t channel_array[] = {17};
+
+    rcc_periph_clock_enable(RCC_ADC);
+
+    adc_power_off(ADC1);
+    adc_set_clk_source(ADC1, ADC_CLKSOURCE_PCLK_DIV2);
+    adc_calibrate(ADC1);
+    while (adc_is_calibrating(ADC1)) {
+    }
+
+    adc_enable_vrefint();
+    adc_set_operation_mode(ADC1, ADC_MODE_SCAN);
+    adc_disable_external_trigger_regular(ADC1);
+    adc_set_right_aligned(ADC1);
+    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_239DOT5);
+    adc_set_regular_sequence(ADC1, 1, channel_array);
+    adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
+    adc_disable_analog_watchdog(ADC1);
+    adc_power_on(ADC1);
+
+    board_delay_us(1000);
+
+    adc_start_conversion_regular(ADC1);
+    while (adc_eoc(ADC1) == 0) {
+    }
+    temp = adc_read_regular(ADC1);
+
+    adc_disable_vrefint();
+    adc_power_off(ADC1);
+    rcc_periph_clock_disable(RCC_ADC);
+
+    return 330 * ST_VREFINT_CAL / temp;
 }

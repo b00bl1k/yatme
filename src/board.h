@@ -30,5 +30,6 @@
 void board_init(void);
 void board_sleep(void);
 void board_delay_us(uint32_t);
+uint16_t board_vbat_read(void);
 
 #endif /* ~__BOARD_H__ */
