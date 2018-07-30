@@ -32,13 +32,6 @@
 #include "board.h"
 #include "owbus.h"
 
-/* RTC alarm X sub second register */
-#define RTC_ALRMXSRR_MASKSS_SHIFT (24)
-#define RTC_ALRMXSSR_MASKSS_MASK (0xf)
-#define RTC_ALRMXSSR_MASKSS_NO (0)
-#define RTC_ALRMXSSR_MASKSS_ALL (0xf)
-#define RTC_ALRMXSSR_SS_MASK (0x7fff)
-
 static void clock_init(void)
 {
     rcc_osc_on(RCC_HSI);
@@ -90,7 +83,7 @@ static void rtc_set_alarma(uint32_t mask, uint8_t date, uint8_t hours,
     RTC_ALRMAR = mask | (date << RTC_ALRMXR_DU_SHIFT) |
         (hours << RTC_ALRMXR_HU_SHIFT) | (minutes << RTC_ALRMXR_MNU_SHIFT) |
         (seconds << RTC_ALRMXR_SU_SHIFT);
-    RTC_ALRMASSR = (ss_mask << RTC_ALRMXSRR_MASKSS_SHIFT) | ss_value;
+    RTC_ALRMASSR = (ss_mask << RTC_ALRMXSSR_MASKSS_SHIFT) | ss_value;
 
     RTC_CR |= RTC_CR_ALRAE;
     rtc_lock();
